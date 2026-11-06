@@ -1,0 +1,103 @@
+{
+  "runs": {
+    "$uid": {
+      ".write": "auth != null && auth.uid === $uid && newData.exists() && (!data.exists() || now - data.child('t').val() >= 2000)",
+      ".validate": "newData.hasChildren(['t'])",
+      "t": {
+        ".validate": "newData.val() === now"
+      },
+      "$other": {
+        ".validate": false
+      },
+      ".read": "auth != null && auth.uid === $uid"
+    }
+  },
+  "all": {
+    "scores": {
+      ".read": true,
+      ".indexOn": [
+        "s"
+      ],
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && newData.exists() && ((newData.child('st').val() === root.child('sumo/runs/' + $uid + '/t').val() && (!data.exists() || (newData.child('st').val() > data.child('st').val() && newData.child('s').val() > data.child('s').val())) && now >= newData.child('st').val() + newData.child('s').val() - 3000 && now <= newData.child('st').val() + newData.child('s').val() + 30000) || (data.exists() && newData.child('st').val() === data.child('st').val() && newData.child('s').val() === data.child('s').val() && newData.child('k').val() === data.child('k').val()))",
+        ".validate": "newData.hasChildren(['n', 's', 'st', 'k', 'v', 't'])",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12"
+        },
+        "s": {
+          ".validate": "newData.isNumber() && newData.val() >= 1000 && newData.val() <= 200000"
+        },
+        "st": {
+          ".validate": "newData.isNumber()"
+        },
+        "k": {
+          ".validate": "newData.isNumber() && newData.val() >= 60 && newData.val() <= 200"
+        },
+        "v": {
+          ".validate": "newData.val() === 1"
+        },
+        "t": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  },
+  "d": {
+    "scores": {
+      ".read": true,
+      ".indexOn": [
+        "dk"
+      ],
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && newData.exists() && ((newData.child('st').val() === root.child('sumo/runs/' + $uid + '/t').val() && (!data.exists() || newData.child('dk').val() > data.child('dk').val() || (newData.child('dk').val() === data.child('dk').val() && newData.child('st').val() > data.child('st').val() && newData.child('s').val() > data.child('s').val())) && now >= newData.child('st').val() + newData.child('s').val() - 3000 && now <= newData.child('st').val() + newData.child('s').val() + 30000) || (data.exists() && newData.child('st').val() === data.child('st').val() && newData.child('s').val() === data.child('s').val() && newData.child('k').val() === data.child('k').val() && newData.child('dk').val() === data.child('dk').val()))",
+        ".validate": "newData.hasChildren(['n', 's', 'st', 'k', 'v', 't', 'dk'])",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12"
+        },
+        "s": {
+          ".validate": "newData.isNumber() && newData.val() >= 1000 && newData.val() <= 200000"
+        },
+        "st": {
+          ".validate": "newData.isNumber()"
+        },
+        "k": {
+          ".validate": "newData.isNumber() && newData.val() >= 60 && newData.val() <= 200"
+        },
+        "v": {
+          ".validate": "newData.val() === 1"
+        },
+        "t": {
+          ".validate": "newData.val() === now"
+        },
+        "dk": {
+          ".validate": "newData.isNumber() && newData.val() * 86400000 <= now + 32400000 && now + 32400000 < (newData.val() + 1) * 86400000"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  },
+  "quit": {
+    "$uid": {
+      ".write": "auth != null && auth.uid === $uid && newData.exists() && (!data.exists() || now - data.child('t').val() >= 2000)",
+      ".validate": "newData.hasChildren(['t'])",
+      "t": {
+        ".validate": "newData.val() === now"
+      },
+      "$other": {
+        ".validate": false
+      }
+    },
+    ".read": true,
+    ".indexOn": [
+      "t"
+    ]
+  },
+  "hidden": {
+    ".read": true
+  }
+}
