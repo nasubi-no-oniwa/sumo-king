@@ -561,7 +561,7 @@ async function fbAuth(){if(PV)throw new Error('pv');
  if(!r.ok)throw new Error('auth');const j=await r.json();a={uid:j.localId,token:j.idToken,refresh:j.refreshToken,exp:Date.now()+(+j.expiresIn)*1000};ls.set('sk_auth',a);return a;}
 if(!PV&&!OGP&&!ICON)fbAuth().catch(()=>{});
 const DB=p=>FB.databaseURL+'/sumo/'+p;
-const QA=a=>'.json?auth='+encodeURIComponent(a.token);
+const QA=a=>'.json?auth='+encodeURIComponent(a.token);const QJ=QA,DBROOT=FB.databaseURL+'/sumo';
 const PUT=(url,body)=>fetchR(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 // ずる対策：吹きはじめた瞬間にサーバーの時計を書く。記録はその時刻から実際に時間がたっていないと載らない
 function takeTicket(){if(PV)return Promise.resolve(Date.now());
@@ -575,7 +575,7 @@ async function submit(){const r=G.res;r.newBest=!bestMs||r.ms>bestMs;if(r.newBes
  if(PV){setMsg(t('sent',{r:1}),'ok');sendState.canRename=true;return;}
  setMsg(t('sending'),'');
  try{const st=await G.ticket;if(st==null){setMsg(t('offline'),'err');return;}
-  const a=await fbAuth();const rec={n:myName(),s:r.ms,st,k:r.kg,v:1,t:{'.sv':'timestamp'}};const dk=dayKey(Date.now());const recD={...rec,dk};r.sent={rec,recD};
+  const a=await fbAuth();const rec={n:myName(),s:r.ms,st,k:r.kg,v:1,t:{'.sv':'timestamp'}};const dk=dayKey(Date.now());const recD={...rec,dk,ds:dk*1000000+rec.s};r.sent={rec,recD};
   const cur=await fetchR(DB('all/scores/'+a.uid)+'.json').then(x=>x.ok?x.json():null).catch(()=>null);
   const curD=await fetchR(DB('d/scores/'+a.uid)+'.json').then(x=>x.ok?x.json():null).catch(()=>null);
   const okAll=!cur||cur.s<r.ms,okD=!curD||curD.dk!==dk||curD.s<r.ms;
@@ -592,19 +592,21 @@ $('renameBtn').onclick=async()=>{const n=$('rName').value.trim(),m=$('sendMsg');
   m.textContent=t('renamed');m.className='note ok';$('rName').hidden=true;$('renameBtn').hidden=true;}catch(e){m.textContent=t('senderr');m.className='note err';}
  $('renameBtn').disabled=false;};
 let quitN=0;
+async function cntNum(X,daily){try{if(daily){const r=await fetchR(DB(X+'t')+'.json');if(!r.ok)return 0;const j=await r.json();return j&&j.dk===dayKey(Date.now())?(+j.n||0):0;}const r=await fetchR(DB(X+'c')+'.json');if(!r.ok)return 0;const j=await r.json();return +j||0;}catch(e){return 0;}}
+async function cntPut(X,a,rec){let ok=false;try{const [c,z]=await Promise.all([fetchR(DB(X+'/'+a.uid)+'.json').then(r=>r.ok?r.json():null),fetchR(DB(X+'t')+'.json').then(r=>r.ok?r.json():null)]);const today=dayKey(Date.now()),d0=today*86400000-32400000;const body={};body[X+'/'+a.uid]=rec;if(!c)body[X+'c']={'.sv':{increment:1}};if(!c||!(c.t>=d0)){if(z&&z.dk===today)body[X+'t/n']={'.sv':{increment:1}};else body[X+'t']={dk:today,n:1};}const r=await fetchR(DBROOT+QJ(a),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});ok=r.ok;}catch(_){}if(!ok){const r=await fetchR(DB(X+'/'+a.uid)+QJ(a),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});if(!r.ok)throw new Error('put '+r.status);}}
 async function countOf(p,since){const url=since?DB(p)+'.json?orderBy=%22t%22&startAt='+since:DB(p)+'.json?shallow=true';const r=await fetchR(url);if(!r.ok)return 0;const j=await r.json();return j?Object.keys(j).length:0;}
-async function sendQuit(){if(PV){quitN=3;return;}try{const a=await fbAuth();await PUT(DB('quit/'+a.uid)+QA(a),{t:{'.sv':'timestamp'}});quitN=await countOf('quit');if(mode==='result'&&resKind==='quit')showResult('quit');}catch(e){console.warn(e);}}
+async function sendQuit(){if(PV){quitN=3;return;}try{const a=await fbAuth();await cntPut('quit',a,{t:{'.sv':'timestamp'}});quitN=await cntNum('quit',false);if(mode==='result'&&resKind==='quit')showResult('quit');}catch(e){console.warn(e);}}
 async function loadBoard(board){const today=dayKey(Date.now());
- const url=board==='d'?DB('d/scores')+'.json?orderBy=%22dk%22&equalTo='+today:DB('all/scores')+'.json?orderBy=%22s%22&limitToLast=300';
+ const url=board==='d'?DB('d/scores')+'.json?orderBy=%22ds%22&startAt='+(today*1000000)+'&endAt='+(today*1000000+999999)+'&limitToLast=100':DB('all/scores')+'.json?orderBy=%22s%22&limitToLast=100';
  const [d,h]=await Promise.all([fetch(url).then(r=>{if(!r.ok)throw 0;return r.json()}),fetch(DB('hidden')+'.json').then(r=>r.ok?r.json():null).catch(()=>null)]);
- return Object.entries(d||{}).map(([id,v])=>({...v,id})).filter(r=>!(h&&h[r.id])&&typeof r.s==='number').sort((a,b)=>b.s-a.s||a.t-b.t);}
+ return Object.entries(d||{}).map(([id,v])=>({...v,id})).filter(r=>!(h&&h[r.id])&&typeof r.s==='number'&&(board!=='d'||r.dk===today)).sort((a,b)=>b.s-a.s||a.t-b.t);}
 async function myRank(board,uid){try{const rows=await loadBoard(board);const i=rows.findIndex(r=>r.id===uid);return i>=0?i+1:null;}catch(e){return null;}}
 let rankFrom=false;
 async function openRank(board,fromResult){rankFrom=!!fromResult;show('rankPanel');$('tabDay').classList.toggle('on',board==='d');$('tabAll').classList.toggle('on',board==='all');$('tabDay').onclick=()=>openRank('d',rankFrom);$('tabAll').onclick=()=>openRank('all',rankFrom);
  const box=$('rankBox');box.innerHTML='<p>'+t('loading')+'</p>';
  if(PV){box.innerHTML='<table class="rank"><tr class="quit"><td class="r">'+esc(t('quitMark'))+'</td><td class="n">'+esc(t('quitRow'))+'</td><td class="c">'+esc(t('people',{n:3}))+'</td></tr><tr class="me"><td class="r">1</td><td class="n">'+esc(myName())+'<br><small style="color:var(--sub);font-size:11px">'+esc(grade(bestMs))+'</small></td><td class="c">'+fmt(bestMs)+t('sec')+'</td></tr></table>';return;}
  try{const since=board==='d'?(dayKey(Date.now())*86400000-32400000):0;
-  const [rows,qn]=await Promise.all([loadBoard(board),countOf('quit',since||undefined).catch(()=>0)]);const myId=(ls.get('sk_auth',null)||{}).uid;
+  const [rows,qn]=await Promise.all([loadBoard(board),cntNum('quit',board==='d')]);const myId=(ls.get('sk_auth',null)||{}).uid;
   let h='<table class="rank"><tr class="quit"><td class="r">'+esc(t('quitMark'))+'</td><td class="n">'+esc(t('quitRow'))+'</td><td class="c">'+esc(t('people',{n:qn.toLocaleString()}))+'</td></tr>';
   h+=rows.slice(0,100).map((r,i)=>'<tr'+(r.id===myId?' class="me"':'')+'><td class="r">'+(i+1)+'</td><td class="n">'+esc(r.n)+'<br><small style="color:var(--sub);font-size:11px">'+esc(grade(r.s))+(typeof r.k==='number'?' ・ −'+(W0-r.k)+'kg':'')+'</small></td><td class="c">'+fmt(r.s)+t('sec')+'</td></tr>').join('');
   if(!rows.length)h+='<tr><td></td><td colspan="2">'+t('empty')+'</td></tr>';box.innerHTML=h+'</table>';

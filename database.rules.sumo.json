@@ -49,7 +49,8 @@
     "scores": {
       ".read": true,
       ".indexOn": [
-        "dk"
+        "dk",
+        "ds"
       ],
       "$uid": {
         ".write": "auth != null && auth.uid === $uid && newData.exists() && ((newData.child('st').val() === root.child('sumo/runs/' + $uid + '/t').val() && (!data.exists() || newData.child('dk').val() > data.child('dk').val() || (newData.child('dk').val() === data.child('dk').val() && newData.child('st').val() > data.child('st').val() && newData.child('s').val() > data.child('s').val())) && now >= newData.child('st').val() + newData.child('s').val() - 3000 && now <= newData.child('st').val() + newData.child('s').val() + 30000) || (data.exists() && newData.child('st').val() === data.child('st').val() && newData.child('s').val() === data.child('s').val() && newData.child('k').val() === data.child('k').val() && newData.child('dk').val() === data.child('dk').val()))",
@@ -77,6 +78,9 @@
         },
         "$other": {
           ".validate": false
+        },
+        "ds": {
+          ".validate": "newData.isNumber() && newData.val() === newData.parent().child('dk').val() * 1000000 + newData.parent().child('s').val()"
         }
       }
     }
@@ -99,5 +103,23 @@
   },
   "hidden": {
     ".read": true
+  },
+  "quitc": {
+    ".read": true,
+    ".write": "auth != null && newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1 && !data.parent().child('quit/' + auth.uid).exists() && newData.parent().child('quit/' + auth.uid + '/t').val() === now"
+  },
+  "quitt": {
+    ".read": true,
+    ".write": "auth != null && newData.child('dk').isNumber() && newData.child('dk').val() * 86400000 <= now + 32400000 && (newData.child('dk').val() + 1) * 86400000 > now + 32400000 && newData.child('n').val() === ((data.exists() && data.child('dk').val() === newData.child('dk').val()) ? data.child('n').val() + 1 : 1) && (!data.parent().child('quit/' + auth.uid).exists() || data.parent().child('quit/' + auth.uid + '/t').val() < newData.child('dk').val() * 86400000 - 32400000) && newData.parent().child('quit/' + auth.uid + '/t').val() === now",
+    ".validate": "newData.hasChildren(['dk', 'n'])",
+    "dk": {
+      ".validate": "newData.isNumber()"
+    },
+    "n": {
+      ".validate": "newData.isNumber()"
+    },
+    "$other": {
+      ".validate": false
+    }
   }
 }

@@ -44,5 +44,16 @@ ex('禁煙した人の数を読める',await req('GET','sumo/quit',null),true);
 ex('ほかの人の吹きはじめの時刻は読めない',await req('GET','sumo/runs/'+U,U2),false);
 ex('hidden に書く',await req('PUT','sumo/hidden/'+U,U,true),false);
 ex('ほかの場所に書く',await req('PUT','ft_cells/1/1',U,{n:1}),false);
+// 人数カウンターの試験
+{const INC={'.sv':{increment:1}};
+ex('quit: はじめてで数を増やす',await req('PATCH','sumo','cnt0axxxxxxxxxxxxxxxx',{['quit/'+'cnt0axxxxxxxxxxxxxxxx']:{t:TS},'quitc':INC,'quitt':{dk:dk(),n:1}}),true);
+ex('quit: 記録なしで数だけ増やす',await req('PUT','sumo/quitc','cnt0byyyyyyyyyyyyyyyy',5),false);
+await sleep(2100);
+ex('quit: 2回目で全期間を増やす',await req('PATCH','sumo','cnt0axxxxxxxxxxxxxxxx',{['quit/'+'cnt0axxxxxxxxxxxxxxxx']:{t:TS},'quitc':INC}),false);
+ex('quit: ほかの人のはじめて',await req('PATCH','sumo','cnt0byyyyyyyyyyyyyyyy',{['quit/'+'cnt0byyyyyyyyyyyyyyyy']:{t:TS},'quitc':INC,'quitt/n':INC}),true);
+ex('quit: 今日の数を1にもどす',await req('PATCH','sumo','cnt0czzzzzzzzzzzzzzzz',{['quit/'+'cnt0czzzzzzzzzzzzzzzz']:{t:TS},'quitc':INC,'quitt':{dk:dk(),n:1}}),false);
+ex('quit: ちがう日で書く',await req('PATCH','sumo','cnt0czzzzzzzzzzzzzzzz',{['quit/'+'cnt0czzzzzzzzzzzzzzzz']:{t:TS},'quitc':INC,'quitt':{dk:dk()-1,n:1}}),false);
+{const c=await req('GET','sumo/quitc',null),z=await req('GET','sumo/quitt',null);if(c.j!==2||!z.j||z.j.n!==2){fail++;console.log('NG  quit: 数が合いません',c.j,JSON.stringify(z.j));}else console.log('OK  quit: 全期間2・今日2');}
+}
 console.log(fail?('失敗 '+fail+' 件'):'すべて合格');
 if(fail)process.exit(1);
